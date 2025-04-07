@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="index.css">
+  <title>Pokémon Battle</title>
+  
+</head>
+<body>
+  <h1>Les Combattants</h1>
+  <button id="startBattleBtn">Start Battle</button>
+  <div id="battleLog"></div>
+
+  <script>
+    const startBattleBtn = document.getElementById('startBattleBtn');
+    const battleLog = document.getElementById('battleLog');
+
+    startBattleBtn.addEventListener('click', function () {
+     
+      fetch('index.php')
+        .then(response => response.json())
+        .then(data => {
+          battleLog.innerHTML = '';
+          data.forEach(stat => {
+            battleLog.innerHTML += `
+            <div class='fighter-container'>
+
+                  <div class="fighter-inner-container">
+
+                        <div class='fighter'>
+
+                          <div class='fighterid'> 
+                            <h2>${stat[0].name}</h2>
+                            <img src="${stat[0].img}" />
+                          </div>
+
+                          <h3>Points: ${stat[0].points}</h3>
+                          <h3>Min Attack Points: ${stat[0].minAttack}</h3>
+                          <h3>Max Attack Points: ${stat[0].maxAttack}</h3>
+                          <h3>Special Attack: ${stat[0].specialAttack}</h3>
+                          <h3>Probability Special Attack: ${stat[0].probabilitySpecial}</h3>
+                        </div>
+
+                        <div class='fighter'>
+
+                          <div class='fighterid'>
+                            <h2>${stat[1].name}</h2>
+                            <img src="${stat[1].img}" />
+                          </div>
+
+                          <h3>Points: ${stat[1].points}</h3>
+                          <h3>Min Attack Points: ${stat[1].minAttack}</h3>
+                          <h3>Max Attack Points: ${stat[1].maxAttack}</h3>
+                          <h3>Special Attack: ${stat[1].specialAttack}</h3>
+                          <h3>Probability Special Attack: ${stat[1].probabilitySpecial}</h3>
+                          </div>  
+                         
+                    </div>
+                         
+              
+
+              <div class='score-container'>
+                <h2>ROUND ${stat[0].round}</h2>
+
+                <div class='score'>
+
+                  <h3>${stat[0].damage}</h3>
+                  <h3>${stat[1].damage}</h3>
+
+              </div>
+             
+            
+             
+            `;
+          });
+        })
+        .catch(error => {
+          console.error('Error fetching battle data:', error);
+          battleLog.innerHTML = 'Error starting the battle.';
+        });
+    });
+  </script>
+</body>
+</html>
