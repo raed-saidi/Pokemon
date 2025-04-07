@@ -61,7 +61,6 @@ class Pokemon {
         return $this->hp;
     }
 }
-
 class Fight {
     private $pokemon1;
     private $pokemon2;
