@@ -43,16 +43,6 @@ class Pokemon {
         return $this->hp <= 0;
     }
 
-    public function attack($target) {
-        $damage = rand($this->attackPokemon->attackMinimal, $this->attackPokemon->attackMaximal);
-        if (rand(1, 100) <= $this->attackPokemon->probabilitySpecialAttack) {
-            $damage *= $this->attackPokemon->specialAttack;
-        }
-        $newHp = $target->getHp() - $damage;
-        $target->setHp(max(0, $newHp));
-        return round($damage);
-    }
-
     public function setHp($hp) {
         $this->hp = $hp;
     }
@@ -60,11 +50,74 @@ class Pokemon {
     public function getStatus() {
         return $this->hp;
     }
+
+    public function attack($target, $effectiveness = 1) {
+        $damage = rand($this->attackPokemon->attackMinimal, $this->attackPokemon->attackMaximal);
+        $usedSpecial = false;
+
+        if (rand(1, 100) <= $this->attackPokemon->probabilitySpecialAttack) {
+            $damage *= $this->attackPokemon->specialAttack;
+            $usedSpecial = true;
+        }
+
+        $damage *= $effectiveness;
+        $damage = round($damage);
+
+        $target->setHp(max(0, $target->getHp() - $damage));
+
+        return [
+            "damage" => $damage,
+            "special" => $usedSpecial
+        ];
+    }
 }
 
+class PokemonFeu extends Pokemon {
+    public function getType() {
+        return 'Feu';
+    }
+
+    public function getEffectiveness($type) {
+        return match($type) {
+            'Plante' => 2,
+            'Eau', 'Feu' => 0.5,
+            default => 1
+        };
+    }
+}
+
+class PokemonEau extends Pokemon {
+    public function getType() {
+        return 'Eau';
+    }
+
+    public function getEffectiveness($type) {
+        return match($type) {
+            'Feu' => 2,
+            'Eau', 'Plante' => 0.5,
+            default => 1
+        };
+    }
+}
+
+class PokemonPlante extends Pokemon {
+    public function getType() {
+        return 'Plante';
+    }
+
+    public function getEffectiveness($type) {
+        return match($type) {
+            'Eau' => 2,
+            'Feu', 'Plante' => 0.5,
+            default => 1
+        };
+    }
+}
 class Fight {
     private $pokemon1;
     private $pokemon2;
+    private $effectiveness1;
+    private $effectiveness2;
 
     public function __construct($pokemon1, $pokemon2) {
         $this->pokemon1 = $pokemon1;
@@ -74,50 +127,63 @@ class Fight {
     public function startBattle() {
         $log = [];
         $round = 0;
+        $this->effectiveness1 = $this->pokemon1->getEffectiveness($this->pokemon2->getType());
+        $this->effectiveness2 = $this->pokemon2->getEffectiveness($this->pokemon1->getType());
 
         while (!$this->pokemon1->isDead() && !$this->pokemon2->isDead()) {
-            $damage1 = $this->pokemon1->attack($this->pokemon2);
-            $damage2 = $this->pokemon2->attack($this->pokemon1);
+            $atk1 = $this->pokemon1->attack($this->pokemon2, $this->effectiveness1);
+            $atk2 = $this->pokemon2->attack($this->pokemon1, $this->effectiveness2);
+
             $round++;
 
-            $log[] = [[
-                "name" => $this->pokemon1->getName(),
-                "img" => $this->pokemon1->getUrl(),
-                "points" => $this->pokemon1->getStatus(),
-                "minAttack" => $this->pokemon1->attackPokemon->attackMinimal,
-                "maxAttack" => $this->pokemon1->attackPokemon->attackMaximal,
-                "specialAttack" => $this->pokemon1->attackPokemon->specialAttack,
-                "probabilitySpecial" => $this->pokemon1->attackPokemon->probabilitySpecialAttack,
-                "damage" => $damage1,
-                "round" => $round
-            ], [
-                "name" => $this->pokemon2->getName(),
-                "img" => $this->pokemon2->getUrl(),
-                "points" => $this->pokemon2->getStatus(),
-                "minAttack" => $this->pokemon2->attackPokemon->attackMinimal,
-                "maxAttack" => $this->pokemon2->attackPokemon->attackMaximal,
-                "specialAttack" => $this->pokemon2->attackPokemon->specialAttack,
-                "probabilitySpecial" => $this->pokemon2->attackPokemon->probabilitySpecialAttack,
-                "damage" => $damage2,
-                "round" => $round
-            ]];
+            $log[] = [
+                "round" => $round,
+                "attacker1" => [
+                    "name" => $this->pokemon1->getName(),
+                    "img" => $this->pokemon1->getUrl(),
+                    "points" => $this->pokemon1->getStatus(),
+                    "minAttack" => $this->pokemon1->attackPokemon->attackMinimal,
+                    "maxAttack" => $this->pokemon1->attackPokemon->attackMaximal,
+                    "specialAttack" => $this->pokemon1->attackPokemon->specialAttack,
+                    "probabilitySpecial" => $this->pokemon1->attackPokemon->probabilitySpecialAttack,
+                    "damage" => $atk1["damage"],
+                    "usedSpecial" => $atk1["special"]
+                ],
+                "attacker2" => [
+                    "name" => $this->pokemon2->getName(),
+                    "img" => $this->pokemon2->getUrl(),
+                    "points" => $this->pokemon2->getStatus(),
+                    "minAttack" => $this->pokemon2->attackPokemon->attackMinimal,
+                    "maxAttack" => $this->pokemon2->attackPokemon->attackMaximal,
+                    "specialAttack" => $this->pokemon2->attackPokemon->specialAttack,
+                    "probabilitySpecial" => $this->pokemon2->attackPokemon->probabilitySpecialAttack,
+                    "damage" => $atk2["damage"],
+                    "usedSpecial" => $atk2["special"]
+                ]
+            ];
         }
 
-        return $log;
+        $winner = $this->pokemon1->isDead() ? $this->pokemon2->getName() : $this->pokemon1->getName();
+
+        return [
+            "rounds" => $round,
+            "winner" => $winner,
+            "log" => $log
+        ];
     }
 }
 
-// Initialiation
+// INITIALISATION
 $attackPikachu = new AttackPokemon(10, 20, 2, 30);
 $attackBulbizarre = new AttackPokemon(8, 15, 1.5, 40);
 
-$pikachu = new Pokemon("Pikachu", "https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png", 100, $attackPikachu);
-$bulbizarre = new Pokemon("Bulbizarre", "https://assets.pokemon.com/assets/cms2/img/pokedex/full/001.png", 100, $attackBulbizarre);
+$pikachu = new PokemonEau("Pikachu", "https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png", 100, $attackPikachu);
+$bulbizarre = new PokemonPlante("Bulbizarre", "https://assets.pokemon.com/assets/cms2/img/pokedex/full/001.png", 100, $attackBulbizarre);
 
-// Simulation
+// SIMULATION
 $fight = new Fight($pikachu, $bulbizarre);
 $results = $fight->startBattle();
 
-// Output as JSON
+//  OUTPUT  
 header('Content-Type: application/json');
-echo json_encode($results);
+echo json_encode($results, JSON_PRETTY_PRINT);
